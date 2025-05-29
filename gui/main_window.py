@@ -4,11 +4,15 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from create import CreateServerDialog
+from src.start_server import connect_selection_signal
 import sys
 import json
 import os
 
 class AppLauncher:
+    def __init__(self):
+        self.server_list = None
+
     def launch_app(self):
         parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
         json_path = os.path.join(parent_dir, 'servers.json')
@@ -27,19 +31,20 @@ class AppLauncher:
         #左側レイアウト
         left_layout = QVBoxLayout()
 
-        server_list = QListWidget()
-        server_list.setFixedWidth(300)
-        server_list.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
+        self.server_list = QListWidget()
+        self.server_list.setFixedWidth(300)
+        self.server_list.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
 
         for item in json_load:
-            server_list.addItem(f"{item['dir']}")
+            self.server_list.addItem(f"{item['dir']}")
+        connect_selection_signal(self.server_list)
 
         create_button = QPushButton("サーバーを作成")
         create_button.setFixedSize(300, 50)
         create_button.clicked.connect(lambda: CreateServerDialog().exec())
 
         left_layout.addWidget(QLabel("サーバー一覧："))
-        left_layout.addWidget(server_list)
+        left_layout.addWidget(self.server_list)
         left_layout.addWidget(create_button)
 
         #右側レイアウト
