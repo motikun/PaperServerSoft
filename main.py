@@ -1,4 +1,5 @@
-from gui.main_window import launch_app
+from gui.main_window import AppLauncher
 
 if __name__ == "__main__":
-    launch_app()
+    launcher = AppLauncher()
+    launcher.launch_app()
