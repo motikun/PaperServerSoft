@@ -3,6 +3,7 @@ from create import open_create_window  # create.py 側で関数として定義�
 
 def main():
     root = tk.Tk()
+    root.state('zoomed')
     root.title("ランチャー")
 
     tk.Button(root, text="PaperMCサーバー作成", command=open_create_window).pack(pady=20)
