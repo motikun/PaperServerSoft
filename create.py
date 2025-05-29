@@ -55,12 +55,16 @@ def open_create_window():
         folder_name = server_folder_name.get()
         xms = memory_xms.get()
         xmx = memory_xmx.get()
+        eula = eula_check.get()
 
         if not folder or not folder_name or not xms or not xmx:
             messagebox.showerror("エラー", "全ての項目を入力してください")
             return
         if not xms.isdigit() or not xmx.isdigit():
             messagebox.showerror("エラー", "メモリ値は数字で入力してください")
+            return
+        if not eula:
+            messagebox.showerror("エラー", "EULAに同意してください")
             return
 
         jar_name = f"paper-{version}-{build}.jar"
@@ -96,6 +100,7 @@ def open_create_window():
     server_folder_name = tk.StringVar()
     memory_xms = tk.StringVar()
     memory_xmx = tk.StringVar()
+    eula_check = tk.BooleanVar()
 
     # バリデーション関数と登録
     def validate_number(new_value):
@@ -125,6 +130,8 @@ def open_create_window():
     tk.Entry(window, textvariable=memory_xms, validate="key", validatecommand=vcmd, width=10).pack()
     tk.Label(window, text="Xmx（最大メモリ）").pack()
     tk.Entry(window, textvariable=memory_xmx, validate="key", validatecommand=vcmd, width=10).pack()
+
+    tk.Checkbutton(window, text="EULAに同意します", variable=eula_check).pack()
 
     # 実行ボタン
     tk.Button(window, text="サーバーを構築", command=download_paper_jar).pack(pady=15)
