@@ -1,11 +1,18 @@
-import tkinter as tk
-from create import open_create_window  # create.py 側で関数として定義しておく
+from PyQt6.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout
+from create import CreateServerDialog
+import sys
 
 def launch_app():
-    root = tk.Tk()
-    root.state('zoomed')
-    root.title("ランチャー")
+    app = QApplication(sys.argv)
+    window = QWidget()
+    window.setWindowTitle("ランチャー")
 
-    tk.Button(root, text="PaperMCサーバー作成", command=open_create_window).pack(pady=20)
+    layout = QVBoxLayout()
+    button = QPushButton("PaperMCサーバー作成")
+    button.clicked.connect(lambda: CreateServerDialog().exec())
+    layout.addWidget(button)
 
-    root.mainloop()
+    window.setLayout(layout)
+    window.showMaximized()
+
+    sys.exit(app.exec())

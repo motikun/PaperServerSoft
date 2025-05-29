@@ -1,140 +1,145 @@
-import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
+from PyQt6.QtWidgets import (
+    QDialog, QVBoxLayout, QLabel, QComboBox, QLineEdit, QPushButton,
+    QFileDialog, QMessageBox, QCheckBox, QHBoxLayout, QApplication
+)
+from PyQt6.QtCore import Qt, QThread, pyqtSignal
 import requests
 import os
-import threading
 
-def open_create_window():
-    # ---------- API処理 ----------
-    def get_paper_versions():
+class DownloadThread(QThread):
+    finished = pyqtSignal(str)
+    error = pyqtSignal(str)
+
+    def __init__(self, version, build, jar_name, target_dir, memory_xms, memory_xmx):
+        super().__init__()
+        self.version = version
+        self.build = build
+        self.jar_name = jar_name
+        self.target_dir = target_dir
+        self.memory_xms = memory_xms
+        self.memory_xmx = memory_xmx
+
+    def run(self):
+        try:
+            os.makedirs(self.target_dir, exist_ok=True)
+            url = f"https://api.papermc.io/v2/projects/paper/versions/{self.version}/builds/{self.build}/downloads/{self.jar_name}"
+            res = requests.get(url, stream=True)
+            res.raise_for_status()
+            save_path = os.path.join(self.target_dir, self.jar_name)
+
+            with open(save_path, "wb") as f:
+                for chunk in res.iter_content(chunk_size=8192):
+                    f.write(chunk)
+
+            with open(os.path.join(self.target_dir, "eula.txt"), "w", encoding="utf-8") as f:
+                f.write("eula=true\n")
+
+            with open(os.path.join(self.target_dir, "start.bat"), "w", encoding="utf-8") as f:
+                f.write(f"@echo off\n")
+                f.write(f"java -Xms{self.memory_xms}G -Xmx{self.memory_xmx}G -jar {self.jar_name} nogui\n")
+                f.write("pause\n")
+
+            self.finished.emit("サーバーを構築しました")
+        except Exception as e:
+            self.error.emit(str(e))
+
+
+class CreateServerDialog(QDialog):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("PaperMCサーバーダウンローダー")
+        self.setFixedSize(400, 450)
+
+        self.version_combo = QComboBox()
+        self.folder_name_input = QLineEdit()
+        self.directory_input = QLineEdit()
+        self.xms_input = QLineEdit()
+        self.xmx_input = QLineEdit()
+        self.eula_checkbox = QCheckBox("EULAに同意します")
+
+        layout = QVBoxLayout()
+        layout.addWidget(QLabel("PaperMCのバージョンを選択"))
+        layout.addWidget(self.version_combo)
+
+        layout.addWidget(QLabel("サーバーフォルダ名"))
+        layout.addWidget(self.folder_name_input)
+
+        layout.addWidget(QLabel("ディレクトリ"))
+        dir_layout = QHBoxLayout()
+        self.directory_input.setReadOnly(True)
+        browse_button = QPushButton("参照")
+        browse_button.clicked.connect(self.select_directory)
+        dir_layout.addWidget(self.directory_input)
+        dir_layout.addWidget(browse_button)
+        layout.addLayout(dir_layout)
+
+        layout.addWidget(QLabel("Xms（最小メモリ）"))
+        layout.addWidget(self.xms_input)
+        layout.addWidget(QLabel("Xmx（最大メモリ）"))
+        layout.addWidget(self.xmx_input)
+
+        layout.addWidget(self.eula_checkbox)
+
+        self.start_button = QPushButton("サーバーを構築")
+        self.start_button.clicked.connect(self.download_paper_jar)
+        layout.addWidget(self.start_button)
+
+        self.setLayout(layout)
+
+        self.load_versions()
+
+    def load_versions(self):
         try:
             res = requests.get("https://api.papermc.io/v2/projects/paper")
             res.raise_for_status()
-            return res.json()["versions"]
+            versions = res.json()["versions"]
+            self.version_combo.addItems(versions)
         except Exception as e:
-            print("バージョン取得失敗:", e)
-            return ["取得失敗"]
+            self.version_combo.addItem("取得失敗")
 
-    def get_latest_build(version):
+    def select_directory(self):
+        directory = QFileDialog.getExistingDirectory(self, "ディレクトリ選択")
+        if directory:
+            self.directory_input.setText(directory)
+
+    def download_paper_jar(self):
+        version = self.version_combo.currentText()
+        folder_name = self.folder_name_input.text()
+        directory = self.directory_input.text()
+        xms = self.xms_input.text()
+        xmx = self.xmx_input.text()
+        eula = self.eula_checkbox.isChecked()
+
+        if not all([folder_name, directory, xms, xmx]):
+            QMessageBox.critical(self, "エラー", "全ての項目を入力してください")
+            return
+
+        if not (xms.isdigit() and xmx.isdigit()):
+            QMessageBox.critical(self, "エラー", "メモリ値は数字で入力してください")
+            return
+
+        if not eula:
+            QMessageBox.critical(self, "エラー", "EULAに同意してください")
+            return
+
+        build = self.get_latest_build(version)
+        if not build:
+            QMessageBox.critical(self, "エラー", "ビルドの取得に失敗しました")
+            return
+
+        jar_name = f"paper-{version}-{build}.jar"
+        target_dir = os.path.join(directory, folder_name)
+
+        self.thread = DownloadThread(version, build, jar_name, target_dir, xms, xmx)
+        self.thread.finished.connect(lambda msg: QMessageBox.information(self, "成功", msg))
+        self.thread.error.connect(lambda msg: QMessageBox.critical(self, "エラー", f"ダウンロード失敗: {msg}"))
+        self.thread.start()
+
+    def get_latest_build(self, version):
         try:
             url = f"https://api.papermc.io/v2/projects/paper/versions/{version}"
             res = requests.get(url)
             res.raise_for_status()
-            builds = res.json()["builds"]
-            return builds[-1]
-        except Exception as e:
-            print("ビルド取得失敗:", e)
+            return res.json()["builds"][-1]
+        except Exception:
             return None
-
-    # ---------- GUIイベント ----------
-    def select_directory():
-        folder = filedialog.askdirectory()
-        if folder:
-            selected_directory.set(folder)
-
-    def create_eula_and_start_bat(save_dir, jar_name):
-        try:
-            with open(os.path.join(save_dir, "eula.txt"), "w", encoding="utf-8") as f:
-                f.write("eula=true\n")
-            with open(os.path.join(save_dir, "start.bat"), "w", encoding="utf-8") as f:
-                f.write(f"@echo off\n")
-                f.write(f"java -Xms{memory_xms.get()}G -Xmx{memory_xmx.get()}G -jar {jar_name} nogui\n")
-                f.write("pause\n")
-        except Exception as e:
-            messagebox.showerror("エラー", f"ファイル作成失敗: {e}")
-
-    def download_paper_jar():
-        version = selected_version.get()
-        build = get_latest_build(version)
-
-        if not build:
-            messagebox.showerror("エラー", "ビルドの取得に失敗しました")
-            return
-
-        folder = selected_directory.get()
-        folder_name = server_folder_name.get()
-        xms = memory_xms.get()
-        xmx = memory_xmx.get()
-        eula = eula_check.get()
-
-        if not folder or not folder_name or not xms or not xmx:
-            messagebox.showerror("エラー", "全ての項目を入力してください")
-            return
-        if not xms.isdigit() or not xmx.isdigit():
-            messagebox.showerror("エラー", "メモリ値は数字で入力してください")
-            return
-        if not eula:
-            messagebox.showerror("エラー", "EULAに同意してください")
-            return
-
-        jar_name = f"paper-{version}-{build}.jar"
-        target_dir = os.path.join(folder, folder_name)
-        save_path = os.path.join(target_dir, jar_name)
-
-        def download_thread():
-            try:
-                os.makedirs(target_dir, exist_ok=True)
-                url = f"https://api.papermc.io/v2/projects/paper/versions/{version}/builds/{build}/downloads/{jar_name}"
-                res = requests.get(url, stream=True)
-                res.raise_for_status()
-
-                with open(save_path, "wb") as f:
-                    for chunk in res.iter_content(chunk_size=8192):
-                        f.write(chunk)
-
-                create_eula_and_start_bat(target_dir, jar_name)
-                messagebox.showinfo("成功", "サーバーを構築しました")
-            except Exception as e:
-                messagebox.showerror("エラー", f"ダウンロード失敗: {e}")
-
-        threading.Thread(target=download_thread).start()
-
-    # ---------- GUI構築 ----------
-    window = tk.Toplevel()
-    window.title("PaperMCサーバーダウンローダー")
-    window.resizable(False, False)
-
-    # 変数定義
-    selected_version = tk.StringVar()
-    selected_directory = tk.StringVar()
-    server_folder_name = tk.StringVar()
-    memory_xms = tk.StringVar()
-    memory_xmx = tk.StringVar()
-    eula_check = tk.BooleanVar()
-
-    # バリデーション関数と登録
-    def validate_number(new_value):
-        return new_value.isdigit() or new_value == ""
-
-    vcmd = (window.register(validate_number), "%P")
-
-    # バージョン選択
-    tk.Label(window, text="PaperMCのバージョンを選択").pack(pady=(10, 0))
-    version_combobox = ttk.Combobox(window, textvariable=selected_version, values=get_paper_versions(), state="readonly")
-    version_combobox.current(0)
-    version_combobox.pack(pady=5)
-
-    # フォルダ名
-    tk.Label(window, text="サーバーフォルダ名").pack(pady=(10, 0))
-    tk.Entry(window, textvariable=server_folder_name, width=30).pack(pady=5)
-
-    # 保存先ディレクトリ
-    tk.Label(window, text="ディレクトリ").pack(pady=(10, 0))
-    dir_frame = tk.Frame(window)
-    dir_frame.pack(pady=5)
-    tk.Entry(dir_frame, textvariable=selected_directory, state="readonly", width=40).pack(side="left", padx=(0, 5))
-    tk.Button(dir_frame, text="参照", command=select_directory).pack(side="left")
-
-    # メモリ設定
-    tk.Label(window, text="Xms（最小メモリ）").pack()
-    tk.Entry(window, textvariable=memory_xms, validate="key", validatecommand=vcmd, width=10).pack()
-    tk.Label(window, text="Xmx（最大メモリ）").pack()
-    tk.Entry(window, textvariable=memory_xmx, validate="key", validatecommand=vcmd, width=10).pack()
-
-    tk.Checkbutton(window, text="EULAに同意します", variable=eula_check).pack()
-
-    # 実行ボタン
-    tk.Button(window, text="サーバーを構築", command=download_paper_jar).pack(pady=15)
-
-    # 実行
-    window.mainloop()
