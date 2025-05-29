@@ -19,7 +19,7 @@ class DownloadThread(QThread):
         self.target_dir = target_dir
         self.memory_xms = memory_xms
         self.memory_xmx = memory_xmx
-        self.folder_name_input = folder_name_input
+        self.folder_name = folder_name_input
 
     def run(self):
         try:
@@ -41,15 +41,27 @@ class DownloadThread(QThread):
                 f.write(f"java -Xms{self.memory_xms}G -Xmx{self.memory_xmx}G -jar {self.jar_name} nogui\n")
                 f.write("pause\n")
 
-            servers = {
-                "name": self.folder_name_input,
-                "dir": self.target_dir
-            }
-
             info_path = os.path.join(os.path.dirname(__file__), "servers.json")
-            with open(info_path, "w", encoding="utf-8") as f:
-                json.dump(servers, f, indent=4, ensure_ascii=False)
 
+            # 既にファイルがあれば読み込む、なければ空のリストを使う
+            if os.path.exists(info_path):
+                with open(info_path, "r", encoding="utf-8") as f:
+                    try:
+                        server_list = json.load(f)
+                    except json.JSONDecodeError:
+                        server_list = []
+            else:
+                server_list = []
+
+            # 新しいサーバー情報を追加
+            server_list.append({
+                "name": self.folder_name,
+                "dir": self.target_dir
+            })
+
+            # ファイルに書き戻す
+            with open(info_path, "w", encoding="utf-8") as f:
+                json.dump(server_list, f, indent=4, ensure_ascii=False)
 
             self.finished.emit("サーバーを構築しました")
         except Exception as e:
