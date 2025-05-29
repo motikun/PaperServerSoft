@@ -1,4 +1,5 @@
 from PyQt6.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout
+from PyQt6.QtCore import Qt
 from create import CreateServerDialog
 import sys
 
@@ -7,10 +8,14 @@ def launch_app():
     window = QWidget()
     window.setWindowTitle("ランチャー")
 
-    layout = QVBoxLayout()
     button = QPushButton("PaperMCサーバー作成")
+    button.setFixedSize(300, 100)
     button.clicked.connect(lambda: CreateServerDialog().exec())
-    layout.addWidget(button)
+
+    layout = QVBoxLayout()
+    layout.addStretch()
+    layout.addWidget(button, alignment=Qt.AlignmentFlag.AlignCenter)
+    layout.addStretch()
 
     window.setLayout(layout)
     window.showMaximized()
