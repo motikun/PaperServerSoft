@@ -5,12 +5,13 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 import requests
 import os
+import json
 
 class DownloadThread(QThread):
     finished = pyqtSignal(str)
     error = pyqtSignal(str)
 
-    def __init__(self, version, build, jar_name, target_dir, memory_xms, memory_xmx):
+    def __init__(self, version, build, jar_name, target_dir, memory_xms, memory_xmx, folder_name_input):
         super().__init__()
         self.version = version
         self.build = build
@@ -18,6 +19,7 @@ class DownloadThread(QThread):
         self.target_dir = target_dir
         self.memory_xms = memory_xms
         self.memory_xmx = memory_xmx
+        self.folder_name_input = folder_name_input
 
     def run(self):
         try:
@@ -38,6 +40,16 @@ class DownloadThread(QThread):
                 f.write(f"@echo off\n")
                 f.write(f"java -Xms{self.memory_xms}G -Xmx{self.memory_xmx}G -jar {self.jar_name} nogui\n")
                 f.write("pause\n")
+
+            servers = {
+                "name": self.folder_name_input,
+                "dir": self.target_dir
+            }
+
+            info_path = os.path.join(os.path.dirname(__file__), "servers.json")
+            with open(info_path, "w", encoding="utf-8") as f:
+                json.dump(servers, f, indent=4, ensure_ascii=False)
+
 
             self.finished.emit("サーバーを構築しました")
         except Exception as e:
@@ -130,7 +142,7 @@ class CreateServerDialog(QDialog):
         jar_name = f"paper-{version}-{build}.jar"
         target_dir = os.path.join(directory, folder_name)
 
-        self.thread = DownloadThread(version, build, jar_name, target_dir, xms, xmx)
+        self.thread = DownloadThread(version, build, jar_name, target_dir, xms, xmx, folder_name)
         self.thread.finished.connect(lambda msg: QMessageBox.information(self, "成功", msg))
         self.thread.error.connect(lambda msg: QMessageBox.critical(self, "エラー", f"ダウンロード失敗: {msg}"))
         self.thread.start()
