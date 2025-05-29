@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QPushButton, QVBoxLayout, QLabel,
-    QMessageBox, QListWidget, QSizePolicy, QHBoxLayout
+    QMessageBox, QListWidget, QSizePolicy, QHBoxLayout, QTextEdit
 )
 from PyQt6.QtCore import Qt
 from create import CreateServerDialog
@@ -23,6 +23,7 @@ def launch_app():
     window = QWidget()
     window.setWindowTitle("ランチャー")
 
+    #左側レイアウト
     left_layout = QVBoxLayout()
 
     server_list = QListWidget()
@@ -40,7 +41,42 @@ def launch_app():
     left_layout.addWidget(server_list)
     left_layout.addWidget(create_button)
 
-    window.setLayout(left_layout)
+    #右側レイアウト
+    right_layout = QVBoxLayout()
+
+    #------設定とか------
+    settings_layout = QHBoxLayout()
+
+    start_button = QPushButton("起動")
+    start_button.setFixedSize(200, 50)
+
+    stop_button = QPushButton("停止")
+    stop_button.setFixedSize(200, 50)
+
+    settings_button = QPushButton("サーバー設定")
+    settings_button.setFixedSize(200, 50)
+
+    settings_layout.addStretch()
+    settings_layout.addWidget(start_button)
+    settings_layout.addWidget(stop_button)
+    settings_layout.addWidget(settings_button)
+    #------ここまで------
+
+    log_text = QTextEdit()
+    log_text.setReadOnly(True)
+    log_text.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
+
+    right_layout.addStretch()
+    right_layout.addLayout(settings_layout)
+    right_layout.addWidget(log_text)
+
+    #レイアウトまとめ
+    main_layout = QHBoxLayout()
+
+    main_layout.addLayout(left_layout)
+    main_layout.addLayout(right_layout)
+
+    window.setLayout(main_layout)
     window.showMaximized()
 
     sys.exit(app.exec())
