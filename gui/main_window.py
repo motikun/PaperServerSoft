@@ -4,35 +4,35 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from create import CreateServerDialog
-from src.start_server import connect_selection_signal, start_server, get_server_dir
+from src.start_server import connect_selection_signal, get_server_dir, ServerWorker
 from load_json import load_servers
 from src.server_config import server_config
 from src.delete_server import delete_server
 import sys
-import json
 import os
 
-class AppLauncher:
+class AppLauncher(QWidget):
     def __init__(self):
+        super().__init__()
         self.server_list = None
-        self.window = None
+        self.log_text = None
+        self.worker = None
+        self.init_ui()
 
-    def launch_app(self):
+    def init_ui(self):
+        self.setWindowTitle("ランチャー")
+
         json_load = load_servers()
-        app = QApplication(sys.argv)
-        self.window = QWidget()
-        window = self.window
-        window.setWindowTitle("ランチャー")
 
-        #左側レイアウト
+        # --- 左側レイアウト ---
         left_layout = QVBoxLayout()
-
         self.server_list = QListWidget()
         self.server_list.setFixedWidth(300)
         self.server_list.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
 
         for item in json_load:
-            self.server_list.addItem(f"{item['name']}")
+            self.server_list.addItem(item['name'])
+
         connect_selection_signal(self.server_list)
 
         create_button = QPushButton("サーバーを作成")
@@ -43,10 +43,9 @@ class AppLauncher:
         left_layout.addWidget(self.server_list)
         left_layout.addWidget(create_button)
 
-        #右側レイアウト
+        # --- 右側レイアウト ---
         right_layout = QVBoxLayout()
 
-        #------設定とか------
         settings_layout = QHBoxLayout()
 
         start_button = QPushButton("起動")
@@ -60,42 +59,53 @@ class AppLauncher:
         settings_button.setFixedSize(200, 50)
         settings_button.clicked.connect(self.handle_server_config)
 
-        delete_server = QPushButton("このサーバーを削除")
-        delete_server.setFixedSize(200, 50)
-        delete_server.clicked.connect(self.handle_delete_server)
+        delete_button = QPushButton("このサーバーを削除")
+        delete_button.setFixedSize(200, 50)
+        delete_button.clicked.connect(self.handle_delete_server)
 
         settings_layout.addStretch()
         settings_layout.addWidget(start_button)
         settings_layout.addWidget(stop_button)
         settings_layout.addWidget(settings_button)
-        settings_layout.addWidget(delete_server)
-        #------ここまで------
+        settings_layout.addWidget(delete_button)
 
-        log_text = QTextEdit()
-        log_text.setReadOnly(True)
-        log_text.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
+        self.log_text = QTextEdit()
+        self.log_text.setReadOnly(True)
+        self.log_text.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
 
         right_layout.addStretch()
         right_layout.addLayout(settings_layout)
-        right_layout.addWidget(log_text)
+        right_layout.addWidget(self.log_text)
 
-        #レイアウトまとめ
+        # --- メインレイアウト ---
         main_layout = QHBoxLayout()
-
         main_layout.addLayout(left_layout)
         main_layout.addLayout(right_layout)
 
-        window.setLayout(main_layout)
-        window.showMaximized()
-
-        sys.exit(app.exec())
-
-    def handle_server_config(self):
-        server_config(self, parent=self.window)
+        self.setLayout(main_layout)
 
     def run_server(self):
         selected_server_dir = get_server_dir(self.server_list)
-        start_server(selected_server_dir)
+        if not selected_server_dir:
+            QMessageBox.warning(self, "エラー", "サーバーが選択されていません")
+            return
+
+        self.worker = ServerWorker(selected_server_dir)
+        self.worker.server_log.connect(self.append_log)
+        self.worker.start()
+
+    def append_log(self, text):
+        self.log_text.append(text)
+
+    def handle_server_config(self):
+        server_config(self, parent=self)
 
     def handle_delete_server(self):
-        delete_server(self, parent=self.window)
+        delete_server(self, parent=self)
+
+# アプリ起動用コード
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    launcher = AppLauncher()
+    launcher.showMaximized()
+    sys.exit(app.exec())
