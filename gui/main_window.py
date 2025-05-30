@@ -6,6 +6,7 @@ from PyQt6.QtCore import Qt
 from create import CreateServerDialog
 from src.start_server import connect_selection_signal
 from load_json import load_servers
+from src.server_config import server_config
 import sys
 import json
 import os
@@ -53,6 +54,7 @@ class AppLauncher:
 
         settings_button = QPushButton("サーバー設定")
         settings_button.setFixedSize(200, 50)
+        settings_button.clicked.connect(self.handle_server_config)
 
         settings_layout.addStretch()
         settings_layout.addWidget(start_button)
@@ -78,3 +80,6 @@ class AppLauncher:
         window.showMaximized()
 
         sys.exit(app.exec())
+
+    def handle_server_config(self):
+        server_config(self)
