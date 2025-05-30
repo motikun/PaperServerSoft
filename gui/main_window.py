@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QPushButton, QVBoxLayout, QLabel,
-    QMessageBox, QListWidget, QSizePolicy, QHBoxLayout, QTextEdit
+    QMessageBox, QListWidget, QSizePolicy, QHBoxLayout, QTextEdit,
+    QLineEdit
 )
 from PyQt6.QtCore import Qt
 from create import CreateServerDialog
@@ -26,6 +27,7 @@ class AppLauncher(QWidget):
 
         # --- 左側レイアウト ---
         left_layout = QVBoxLayout()
+
         self.server_list = QListWidget()
         self.server_list.setFixedWidth(300)
         self.server_list.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
@@ -37,7 +39,7 @@ class AppLauncher(QWidget):
 
         create_button = QPushButton("サーバーを作成")
         create_button.setFixedSize(300, 50)
-        create_button.clicked.connect(lambda: CreateServerDialog().exec())
+        create_button.clicked.connect(self.open_create_dialog)
 
         left_layout.addWidget(QLabel("サーバー一覧："))
         left_layout.addWidget(self.server_list)
@@ -73,9 +75,14 @@ class AppLauncher(QWidget):
         self.log_text.setReadOnly(True)
         self.log_text.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
 
+        self.server_command = QLineEdit()
+        self.server_command.setFixedHeight(30)
+        self.server_command.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+
         right_layout.addStretch()
         right_layout.addLayout(settings_layout)
         right_layout.addWidget(self.log_text)
+        right_layout.addWidget(self.server_command)
 
         # --- メインレイアウト ---
         main_layout = QHBoxLayout()
@@ -102,6 +109,16 @@ class AppLauncher(QWidget):
 
     def handle_delete_server(self):
         delete_server(self, parent=self)
+
+    def refresh_server_list(self):
+        self.server_list.clear()
+        for item in load_servers():
+            self.server_list.addItem(item["name"])
+
+    def open_create_dialog(self):
+        dialog = CreateServerDialog()
+        dialog.server_created.connect(self.refresh_server_list)
+        dialog.exec()
 
 # アプリ起動用コード
 if __name__ == "__main__":

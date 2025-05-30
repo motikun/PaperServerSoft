@@ -43,7 +43,6 @@ class DownloadThread(QThread):
 
             info_path = os.path.join(os.path.dirname(__file__), "servers.json")
 
-            # 既にファイルがあれば読み込む、なければ空のリストを使う
             if os.path.exists(info_path):
                 with open(info_path, "r", encoding="utf-8") as f:
                     try:
@@ -53,13 +52,11 @@ class DownloadThread(QThread):
             else:
                 server_list = []
 
-            # 新しいサーバー情報を追加
             server_list.append({
                 "name": self.folder_name,
                 "dir": self.target_dir
             })
 
-            # ファイルに書き戻す
             with open(info_path, "w", encoding="utf-8") as f:
                 json.dump(server_list, f, indent=4, ensure_ascii=False)
 
@@ -69,6 +66,8 @@ class DownloadThread(QThread):
 
 
 class CreateServerDialog(QDialog):
+    server_created = pyqtSignal()
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("PaperMCサーバーダウンローダー")
@@ -155,9 +154,14 @@ class CreateServerDialog(QDialog):
         target_dir = os.path.join(directory, folder_name)
 
         self.thread = DownloadThread(version, build, jar_name, target_dir, xms, xmx, folder_name)
-        self.thread.finished.connect(lambda msg: QMessageBox.information(self, "成功", msg))
+        self.thread.finished.connect(self.on_finished)
         self.thread.error.connect(lambda msg: QMessageBox.critical(self, "エラー", f"ダウンロード失敗: {msg}"))
         self.thread.start()
+
+    def on_finished(self, msg):
+        QMessageBox.information(self, "成功", msg)
+        self.server_created.emit()
+        self.close()
 
     def get_latest_build(self, version):
         try:
