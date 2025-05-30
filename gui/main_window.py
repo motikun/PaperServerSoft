@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from create import CreateServerDialog
-from src.start_server import connect_selection_signal
+from src.start_server import connect_selection_signal, start_server, get_server_dir
 from load_json import load_servers
 from src.server_config import server_config
 import sys
@@ -48,6 +48,7 @@ class AppLauncher:
 
         start_button = QPushButton("起動")
         start_button.setFixedSize(200, 50)
+        start_button.clicked.connect(self.run_server)
 
         stop_button = QPushButton("停止")
         stop_button.setFixedSize(200, 50)
@@ -83,3 +84,7 @@ class AppLauncher:
 
     def handle_server_config(self):
         server_config(self)
+
+    def run_server(self):
+        selected_server_dir = get_server_dir(self.server_list)
+        start_server(selected_server_dir)
