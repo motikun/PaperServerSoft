@@ -5,6 +5,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from create import CreateServerDialog
 from src.start_server import connect_selection_signal
+from load_json import load_servers
 import sys
 import json
 import os
@@ -14,16 +15,7 @@ class AppLauncher:
         self.server_list = None
 
     def launch_app(self):
-        parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-        json_path = os.path.join(parent_dir, 'servers.json')
-
-        if not os.path.exists(json_path):
-            with open(json_path, "w", encoding="utf-8") as f:
-                json.dump([], f, indent=4, ensure_ascii=False)
-
-        with open(json_path, 'r', encoding='utf-8') as json_open:
-            json_load = json.load(json_open)
-
+        json_load = load_servers()
         app = QApplication(sys.argv)
         window = QWidget()
         window.setWindowTitle("ランチャー")
@@ -36,7 +28,7 @@ class AppLauncher:
         self.server_list.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
 
         for item in json_load:
-            self.server_list.addItem(f"{item['dir']}")
+            self.server_list.addItem(f"{item['name']}")
         connect_selection_signal(self.server_list)
 
         create_button = QPushButton("サーバーを作成")
