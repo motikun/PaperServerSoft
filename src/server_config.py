@@ -13,7 +13,7 @@ def server_config(launcher, parent=None):
     selected_servers = launcher.server_list.selectedItems()
 
     if not selected_servers:
-        QMessageBox.warning(parent, "警告", "サーバーを選択してください。")
+        QMessageBox.warning(parent, "警告", "サーバーを選択してください")
         return
 
     selected_server_name = selected_servers[0].text()

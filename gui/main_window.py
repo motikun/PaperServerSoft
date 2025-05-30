@@ -7,6 +7,7 @@ from create import CreateServerDialog
 from src.start_server import connect_selection_signal, start_server, get_server_dir
 from load_json import load_servers
 from src.server_config import server_config
+from src.delete_server import delete_server
 import sys
 import json
 import os
@@ -59,10 +60,15 @@ class AppLauncher:
         settings_button.setFixedSize(200, 50)
         settings_button.clicked.connect(self.handle_server_config)
 
+        delete_server = QPushButton("このサーバーを削除")
+        delete_server.setFixedSize(200, 50)
+        delete_server.clicked.connect(self.handle_delete_server)
+
         settings_layout.addStretch()
         settings_layout.addWidget(start_button)
         settings_layout.addWidget(stop_button)
         settings_layout.addWidget(settings_button)
+        settings_layout.addWidget(delete_server)
         #------ここまで------
 
         log_text = QTextEdit()
@@ -90,3 +96,6 @@ class AppLauncher:
     def run_server(self):
         selected_server_dir = get_server_dir(self.server_list)
         start_server(selected_server_dir)
+
+    def handle_delete_server(self):
+        delete_server(self, parent=self.window)
