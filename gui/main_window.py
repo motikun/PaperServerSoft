@@ -14,11 +14,13 @@ import os
 class AppLauncher:
     def __init__(self):
         self.server_list = None
+        self.window = None
 
     def launch_app(self):
         json_load = load_servers()
         app = QApplication(sys.argv)
-        window = QWidget()
+        self.window = QWidget()
+        window = self.window
         window.setWindowTitle("ランチャー")
 
         #左側レイアウト
@@ -83,7 +85,7 @@ class AppLauncher:
         sys.exit(app.exec())
 
     def handle_server_config(self):
-        server_config(self)
+        server_config(self, parent=self.window)
 
     def run_server(self):
         selected_server_dir = get_server_dir(self.server_list)
