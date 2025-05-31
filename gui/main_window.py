@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from create import CreateServerDialog
 from src.start_server import connect_selection_signal, get_server_dir, ServerWorker
+from src.plugin_list import list_plugins
 from load_json import load_servers
 from src.server_config import server_config
 from src.delete_server import delete_server
@@ -36,6 +37,7 @@ class AppLauncher(QWidget):
             self.server_list.addItem(item['name'])
 
         connect_selection_signal(self.server_list)
+        self.server_list.itemSelectionChanged.connect(self.update_plugin_list)
 
         create_button = QPushButton("サーバーを作成")
         create_button.setFixedSize(300, 50)
@@ -49,6 +51,10 @@ class AppLauncher(QWidget):
         right_layout = QVBoxLayout()
 
         settings_layout = QHBoxLayout()
+
+        self.plugins_list_widget = QListWidget()
+        self.plugins_list_widget.setFixedHeight(200)
+
 
         start_button = QPushButton("起動")
         start_button.setFixedSize(200, 50)
@@ -79,7 +85,8 @@ class AppLauncher(QWidget):
         self.server_command.setFixedHeight(30)
         self.server_command.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
-        right_layout.addStretch()
+        right_layout.addWidget(QLabel("プラグイン一覧:"))
+        right_layout.addWidget(self.plugins_list_widget)
         right_layout.addLayout(settings_layout)
         right_layout.addWidget(self.log_text)
         right_layout.addWidget(self.server_command)
@@ -90,6 +97,10 @@ class AppLauncher(QWidget):
         main_layout.addLayout(right_layout)
 
         self.setLayout(main_layout)
+
+    def update_plugin_list(self):
+        selected_server_dir = get_server_dir(self.server_list)
+        list_plugins(selected_server_dir, self.plugins_list_widget)
 
     def run_server(self):
         selected_server_dir = get_server_dir(self.server_list)
