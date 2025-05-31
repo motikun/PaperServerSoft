@@ -7,6 +7,7 @@ from PyQt6.QtCore import Qt
 from create import CreateServerDialog
 from src.start_server import connect_selection_signal, get_server_dir, ServerWorker
 from src.plugin_list import list_plugins
+from gui.plugin_config import open_plugin_config
 from load_json import load_servers
 from src.server_config import server_config
 from src.delete_server import delete_server
@@ -54,7 +55,7 @@ class AppLauncher(QWidget):
 
         self.plugins_list_widget = QListWidget()
         self.plugins_list_widget.setFixedHeight(200)
-
+        self.plugins_list_widget.itemDoubleClicked.connect(lambda item: self.handle_plugin_config(item, self.server_list, parent=self))
 
         start_button = QPushButton("起動")
         start_button.setFixedSize(200, 50)
@@ -101,6 +102,10 @@ class AppLauncher(QWidget):
     def update_plugin_list(self):
         selected_server_dir = get_server_dir(self.server_list)
         list_plugins(selected_server_dir, self.plugins_list_widget)
+
+    def handle_plugin_config(self, item, server_list, parent=None):
+        selected_server_dir = get_server_dir(server_list)
+        open_plugin_config(item, selected_server_dir, parent=parent)
 
     def run_server(self):
         selected_server_dir = get_server_dir(self.server_list)
